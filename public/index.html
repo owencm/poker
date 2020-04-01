@@ -1,0 +1,33 @@
+<!DOCTYPE >
+<head>
+  <title>Poker ♠️🔥</title>
+  <style>
+    html {
+      background-color: #0f0;
+      font-family: sans-serif;
+    }
+    canvas {
+      background-color: #0c0;
+    }
+  </style>
+</head>
+<body>
+  <div style="display: flex; flex-direction: column; align-items: center">
+    <div id="addPlayer" style="padding-bottom: 5px">
+      <span>Player Name: </span><input type="text" /><button
+        id="addPlayerButton"
+      >
+        Join the game!
+      </button>
+    </div>
+    <canvas
+      width="600"
+      height="600"
+      style="width: 600px; height: 600px"
+    ></canvas>
+    <img src="images/hands.png" style="width: 600px; display: block" />
+    <button id="resetGameButton">Reset game</button>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="index.mjs" type="module"></script>
+</body>
