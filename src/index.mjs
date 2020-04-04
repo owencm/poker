@@ -702,7 +702,7 @@ const startGame = () => {
         setTimeout(() => {
           console.log("Sent action to server", action);
           socket.emit("action", action);
-        }, 50);
+        }, 0);
       });
     }
   };
@@ -736,7 +736,7 @@ const startGame = () => {
     setTimeout(() => {
       console.log("Got action from server", action);
       fromServerActionContainer.actions.push(action);
-    }, 50);
+    }, 0);
   });
 };
 

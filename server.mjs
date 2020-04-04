@@ -5,14 +5,14 @@ import {
   getInitialGameState,
   setGameCoreServerMode,
   updateGameStateBasedOnActions
-} from "./public/gameCore.mjs";
+} from "./src/gameCore.mjs";
 
 const app = express();
 const server = http.createServer(app);
 const socket = socketio(server);
 setGameCoreServerMode();
 
-app.use(express.static("public"));
+app.use(express.static("built"));
 
 let gameState = getInitialGameState();
 
