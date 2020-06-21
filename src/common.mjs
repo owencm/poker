@@ -62,7 +62,7 @@ export const objCollidesWPos = (obj, cPos) => {
   const { pos, type } = obj;
   let width;
   let height;
-  if (type === "text" || type === "menuText") {
+  if (type === "text" || type === "menuText" || type === 'player') {
     ({ width, height } = obj);
     // Fudge factor because text height doesn't include decenders
     height += 3;

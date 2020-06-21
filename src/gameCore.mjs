@@ -3,7 +3,8 @@ import {
   gameWidth,
   gameHeight,
   textHeight,
-  menuPadding,
+  menuPaddingV,
+  menuPaddingH,
   playerPositions,
   playerAlignment
 } from "./constants.mjs";
@@ -32,17 +33,15 @@ export const getNewDeckObj = () => {
 };
 
 const addPlayer = (gameState, name, id, pos) => {
-  if (gameState.playerObjs.length < 6) {
-    gameState.playerObjs.push({
-      type: "player",
-      name,
-      pos,
-      id
-    });
-  }
+  gameState.playerObjs.push({
+    type: "player",
+    name,
+    pos,
+    id
+  });
 };
 
-const addSizeInfoToTextObj = textObj => {
+export const addSizeInfoToTextObj = textObj => {
   if (onServer) {
     throw "Should not be asked to use ctx on server";
   }
@@ -62,10 +61,10 @@ const addSizeInfoToMenuObj = menuObj => {
   menuObj.maxTextWidth = menuObj.options
     .map(x => x.width)
     .reduce((x, y) => Math.max(x, y));
-  menuObj.width = menuObj.maxTextWidth + menuPadding * 2;
+  menuObj.width = menuObj.maxTextWidth + 2 * menuPaddingH;
   menuObj.height =
-    menuObj.options.length * (textHeight + menuPadding) + menuPadding;
-  let menuPos = [...menuObj.relatedToObj.pos];
+    menuObj.options.length * (textHeight + menuPaddingV) + menuPaddingV;
+  let menuPos = [...menuObj.pos];
   if (menuPos[0] + menuObj.width > gameWidth) {
     menuPos[0] = gameWidth - menuObj.width;
   }
@@ -75,33 +74,38 @@ const addSizeInfoToMenuObj = menuObj => {
   menuObj.pos = menuPos;
   for (let i = 0; i < menuObj.options.length; i++) {
     menuObj.options[i].pos = [
-      menuPadding + menuPos[0],
-      menuPadding + menuPos[1] + (textHeight + menuPadding) * i
+      menuPaddingH + menuPos[0],
+      menuPaddingV + menuPos[1] + (textHeight + menuPaddingV) * i
     ];
   }
 };
 
-const getMenuObjForObj = obj => {
+const getMenuObjForObj = (obj, { customPos }) => {
   let menuObj = {
     type: "menu",
     relatedToObj: obj,
     options: []
   };
+  menuObj.pos = customPos !== undefined ? customPos : menuObj.relatedToObj.pos
   if (obj.type === "cards") {
     const gatherAndShuffleOption = {
       text: "Gather all cards and shuffle",
       type: "menuText",
       action: { actionType: "gatherAndSetDeck" }
     };
+    const peekAction = obj.cards[obj.cards.length - 1].peeking[localStorage.playerId] ? 'Unpeek' : 'Peek'
+    const peekSuffix = obj.cards.length > 1 ? " at top card" : " at card"
     menuObj.options.push({
-      text: obj.cards.length > 1 ? "Flip top card" : "Flip card",
-      type: "menuText",
-      action: { actionType: "flip" }
-    });
-    menuObj.options.push({
-      text: obj.cards.length > 1 ? "Peek at top card" : "Peek at card",
+      text: peekAction + peekSuffix,
       type: "menuText",
       action: { actionType: "peek" }
+    });
+    const flipPrefix = obj.cards.length > 1 ? "Flip top card" : "Flip card"
+    const flipSuffix = obj.cards[obj.cards.length - 1].mode === 'faceDown' ? ' (so all can see)' : ''
+    menuObj.options.push({
+      text: flipPrefix + flipSuffix,
+      type: "menuText",
+      action: { actionType: "flip" }
     });
     if (obj.cards.length > 1) {
       menuObj.options.push({
@@ -152,7 +156,8 @@ const getObjWId = (gameState, id) => {
   const objs = [
     ...gameState.cardsObjs,
     ...gameState.chipsObjs,
-    ...gameState.textObjs
+    ...gameState.textObjs,
+    ...gameState.playerObjs,
   ];
   const matchingObjs = objs.filter(o => o.id === id);
   if (matchingObjs.length > 0) {
@@ -165,14 +170,6 @@ export const updateGameStateBasedOnActions = (actions, gameState) => {
   for (const action of actions) {
     if (action.actionType === "resetGame") {
       location.reload();
-    }
-    if (action.actionType === "assignLock") {
-      if (
-        gameState.blockedActionsAndMeta.blockedOnAcquiringLockId ===
-        action.lockId
-      ) {
-        gameState.blockedActionsAndMeta.unblocked = true;
-      }
     }
     if (action.actionType === "popTop") {
       let obj = getObjWId(gameState, action.fromObjWId);
@@ -275,8 +272,7 @@ export const updateGameStateBasedOnActions = (actions, gameState) => {
         console.warn("Could not take action", action);
         break;
       }
-      const menuObj = getMenuObjForObj(obj);
-      menuObj.mouseDownPosOnRelatedObj = action.menuClickPos;
+      const menuObj = getMenuObjForObj(obj, { customPos: action.menuClickPos });
       gameState.menuObjs.push(menuObj);
     }
     if (action.actionType === "closeMenus") {

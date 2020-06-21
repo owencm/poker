@@ -1,11 +1,9 @@
 /*
   Todos:
-    - Networking + backend
-      - Maintain app state on server
-        - Split code into rendering (and event listeners), core app logic, and make updateGameStateBasedOnActions distinguish between client and server
-      - Serialize and send app state and following actions to clients that connect
-      - Broadcast actions to all listening clients
-      - Make some actions server only: add player
+    - Move names
+    - More than 6 players
+    - Move gather and shuffle
+    - Dealer chip
     - Switch from SVG to pngs for all cards and chips
     - Sound effects
     - Annotate players taking actions
@@ -32,7 +30,6 @@ import {
   gameWidth,
   gameHeight,
   textHeight,
-  menuPadding,
   playerAlignment,
   playerPositions
 } from "./constants.mjs";
@@ -40,7 +37,8 @@ import {
   getInitialGameState,
   updateGameStateBasedOnActions,
   getNewDeckObj,
-  alignTextObj
+  alignTextObj,
+  addSizeInfoToTextObj
 } from "./gameCore.mjs";
 
 // Globals
@@ -160,7 +158,7 @@ const render = gameState => {
   }
 
   for (let menuObj of gameState.menuObjs) {
-    const pos = menuObj.pos;
+    const pos = menuObj.mouseDownPosOnRelatedObj || menuObj.pos;
     const { options, width, height } = menuObj;
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.beginPath();
@@ -193,13 +191,6 @@ const getActionsBasedOnInputState = (inputState, gameState) => {
         inputState.objDragged.cards?.length > 1 ||
         inputState.objDragged.count > 1
       ) {
-        const lockId = ID();
-        console.log("will queue up requestLock");
-        actions.push({
-          actionType: "requestLock",
-          lockId,
-          objId: inputState.objDragged.id
-        });
         const newObjId = ID();
         actions.push({
           actionType: "popTop",
@@ -254,11 +245,11 @@ const getActionsBasedOnInputState = (inputState, gameState) => {
       objId: inputState.objDragged.id,
       pos: [
         inputState.objInitPos[0] +
-          inputState.mousePos[0] -
-          inputState.mouseDownPos[0],
+        inputState.mousePos[0] -
+        inputState.mouseDownPos[0],
         inputState.objInitPos[1] +
-          inputState.mousePos[1] -
-          inputState.mouseDownPos[1]
+        inputState.mousePos[1] -
+        inputState.mouseDownPos[1]
       ]
     });
   }
@@ -303,14 +294,14 @@ const getActionsBasedOnInputState = (inputState, gameState) => {
         } else {
           const topCardObj =
             menuObjClicked.relatedToObj.cards[
-              menuObjClicked.relatedToObj.cards.length - 1
+            menuObjClicked.relatedToObj.cards.length - 1
             ];
           actions.push({
             actionType: "setPeekState",
             cardObjId: menuObjClicked.relatedToObj.id,
             peekState:
               topCardObj.peeking &&
-              topCardObj.peeking[localStorage.playerId] === true
+                topCardObj.peeking[localStorage.playerId] === true
                 ? false
                 : true,
             playerId: localStorage.playerId
@@ -411,9 +402,6 @@ const addEventListeners = gameState => {
   };
 
   canvas.addEventListener("mousedown", e => {
-    if (gameState.blockedActionsAndMeta.blockedActions.length > 0) {
-      return;
-    }
     // console.log("mousedown");
     let newInputState;
     const mousePos = getMousePos(canvas, e);
@@ -422,7 +410,8 @@ const addEventListeners = gameState => {
       const allClickableOrDraggableObjs = [
         ...gameState.cardsObjs,
         ...gameState.chipsObjs,
-        ...gameState.textObjs
+        ...gameState.textObjs,
+        ...gameState.playerObjs
       ];
       for (const menuObj of gameState.menuObjs) {
         for (const textObj of menuObj.options) {
@@ -444,6 +433,7 @@ const addEventListeners = gameState => {
               obj.type !== "chips" ||
               (obj.type === "chips" && obj.count < collidedChipCount)
             ) {
+              console.log('clicked', JSON.stringify(obj))
               newInputState = {
                 mode: "clickedMaybeWillDrag",
                 objDragged: obj,
@@ -471,9 +461,6 @@ const addEventListeners = gameState => {
 
   canvas.addEventListener("mousemove", e => {
     e.preventDefault();
-    if (gameState.blockedActionsAndMeta.blockedActions.length > 0) {
-      return;
-    }
     // console.log("mousemove");
     let newInputState;
     const mousePos = getMousePos(canvas, e);
@@ -502,9 +489,6 @@ const addEventListeners = gameState => {
   });
 
   const mouseUpOrLeaveCanvas = e => {
-    if (gameState.blockedActionsAndMeta.blockedActions.length > 0) {
-      return;
-    }
     // console.log("mouseup");
     const mousePos = getMousePos(canvas, e);
     let newInputState;
@@ -545,11 +529,11 @@ const addEventListeners = gameState => {
       const tempTextObjForDeterminingPos = {
         type: "text",
         text: textBox.value,
-        pos: playerPositions[gameState.playerObjs.length]
+        pos: gameState.playerObjs.length < 6 ? playerPositions[gameState.playerObjs.length] : [gameWidth / 2 - 10, gameHeight / 2 + 110]
       };
       alignTextObj(
         tempTextObjForDeterminingPos,
-        playerAlignment[gameState.playerObjs.length],
+        gameState.playerObjs.length < 6 ? playerAlignment[gameState.playerObjs.length] : 'center',
         text => ctx.measureText(text)
       );
       gameState.inputState = {
@@ -589,33 +573,6 @@ const addEventListeners = gameState => {
   });
 };
 
-// const getServerActionsBasedOnClientActions = (actions, gameState) => {
-//   for (const action of actions) {
-//     if (action.actionType === "addPlayer") {
-//       action.pos = playerPositions[gameState.playerObjs.length];
-//     }
-//   }
-//   return actions;
-// };
-
-const splitActionsByBlockedAndNonBlocked = actions => {
-  const lockRequestActions = actions.filter(
-    action => action.actionType === "requestLock"
-  );
-  const lockRequestIndex =
-    lockRequestActions.length > 0 ? actions.indexOf(lockRequestActions[0]) : -1;
-  return {
-    nonBlockedActionsForServerAndClient:
-      lockRequestActions.length > 0
-        ? actions.slice(0, lockRequestIndex + 1)
-        : actions,
-    blockedActions:
-      lockRequestActions.length > 0 ? actions.slice(lockRequestIndex + 1) : [],
-    blockedOnAcquiringLockId:
-      lockRequestActions.length > 0 ? lockRequestActions[0].lockId : undefined
-  };
-};
-
 let frameVal = 0;
 // Get game state
 // Continually: generate actions (do client only, send toServer actions to server), do server actions
@@ -637,52 +594,25 @@ const gameCycle = ({
       fromServerActionContainer.actions = [];
     }
 
-    let nonBlockedActions = [];
-    if (
-      gameState.blockedActionsAndMeta.blockedActions.length === 0 ||
-      gameState.blockedActionsAndMeta.unblocked
-    ) {
-      // If we just got unblocked, do the unblocked actions before getting new ones
-      const clientGeneratedActions = gameState.blockedActionsAndMeta.unblocked
-        ? []
-        : getActionsBasedOnInputState(gameState.inputState, gameState);
-      const {
-        nonBlockedActionsForServerAndClient,
-        blockedActions,
-        blockedOnAcquiringLockId
-      } = splitActionsByBlockedAndNonBlocked([
-        ...gameState.blockedActionsAndMeta.blockedActions,
-        ...clientGeneratedActions
-      ]);
-      // console.log({
-      //   nonBlockedActionsForServerAndClient,
-      //   blockedActions,
-      //   blockedOnAcquiringLockId
-      // });
-      gameState.blockedActionsAndMeta = {
-        blockedOnAcquiringLockId,
-        blockedActions
-      };
-      sendActionsToServer(
-        nonBlockedActionsForServerAndClient.filter(
-          a =>
-            [
-              "closeMenus",
-              "openMenu",
-              "setInputState",
-              "clearInputState"
-            ].indexOf(a.actionType) === -1
-        )
+    const clientGeneratedActions = getActionsBasedOnInputState(gameState.inputState, gameState);
+    sendActionsToServer(
+      clientGeneratedActions.filter(
+        a =>
+          [
+            "closeMenus",
+            "openMenu",
+            "setInputState",
+            "clearInputState"
+          ].indexOf(a.actionType) === -1
+      )
+    );
+    if (clientGeneratedActions.length > 0) {
+      updateGameStateBasedOnActions(
+        clientGeneratedActions,
+        gameState
       );
-      if (nonBlockedActionsForServerAndClient.length > 0) {
-        updateGameStateBasedOnActions(
-          nonBlockedActionsForServerAndClient,
-          gameState
-        );
-      }
-    } else {
-      console.log("blocked", gameState.blockedActionsAndMeta);
     }
+
     render(gameState);
   }
   // Update game state
@@ -717,15 +647,13 @@ const startGame = () => {
       delete localStorage.playerId;
     }
 
+    initialGameState.playerObjs.forEach(addSizeInfoToTextObj)
+    initialGameState.textObjs.forEach(addSizeInfoToTextObj);
+
     addEventListeners(initialGameState);
 
     gameCycle({
-      gameState: Object.assign(initialGameState, {
-        blockedActionsAndMeta: {
-          blockedOnAcquiringLockId: undefined,
-          blockedActions: []
-        }
-      }),
+      gameState: (initialGameState),
       fromServerActionContainer,
       sendActionsToServer
     });

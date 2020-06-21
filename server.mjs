@@ -12,7 +12,8 @@ const server = http.createServer(app);
 const socket = socketio(server);
 setGameCoreServerMode();
 
-app.use(express.static("built"));
+// app.use(express.static("built"));
+app.use(express.static("src"));
 
 let gameState = getInitialGameState();
 
@@ -33,6 +34,7 @@ socket.on("connection", client => {
       gameState = getInitialGameState();
       return;
     }
+    // TODO: check if action couldn't be executed. If not, send snapshot of whole game state to the client that sent it because they're out of sync now and need to reset
     updateGameStateBasedOnActions([action], gameState);
     if (action.actionType === "requestLock") {
       console.log("Send action to client", action);
@@ -43,13 +45,10 @@ socket.on("connection", client => {
     } else {
       client.broadcast.emit("action", action);
     }
-    // if (action.actionType !== "setObjPos") {
-    // client.emit("action", Object.assign(action, { fromServer: true }));
-    // }
   });
 });
 
-server.listen(3000, function() {
+server.listen(3000, function () {
   console.log("listening on *:3000");
 });
 

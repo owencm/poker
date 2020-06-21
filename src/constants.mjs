@@ -6,10 +6,11 @@ export const objSizes = {
   cards: [58, 84],
   chips: [20, 20]
 };
-export const gameWidth = 600;
-export const gameHeight = 600;
+export const gameWidth = 700;
+export const gameHeight = 700;
 export const textHeight = 15;
-export const menuPadding = 5;
+export const menuPaddingH = 15;
+export const menuPaddingV = 5;
 
 export const playerPositions = [
   [20, 20],
