@@ -25,22 +25,23 @@ socket.on("connection", client => {
   client.on("action", action => {
     console.log("Got action from client", action);
 
-    if (action.actionType === "resetGame") {
+    if (action.actionType === "endGame") {
       console.log(
         "Got reset request so broadcast reset and create new game state"
       );
-      client.broadcast.emit("action", action);
-      client.emit("action", action);
       gameState = getInitialGameState();
+      client.broadcast.emit("action", { actionType: 'resetClient' });
+      client.emit("action", { actionType: 'resetClient' });
       return;
     }
     // TODO: check if action couldn't be executed. If not, send snapshot of whole game state to the client that sent it because they're out of sync now and need to reset
-    updateGameStateBasedOnActions([action], gameState);
-    if (action.actionType === "requestLock") {
-      console.log("Send action to client", action);
+    const result = updateGameStateBasedOnActions([action], gameState);
+    if (result.success === false) {
+      console.log("Send reset to client because they sent an action that couldn't be taken", action);
       client.emit(
         "action",
-        Object.assign(action, { actionType: "assignLock" })
+        { actionType: 'resetGame' }
+        // Object.assign(action, { actionType: "assignLock" })
       );
     } else {
       client.broadcast.emit("action", action);

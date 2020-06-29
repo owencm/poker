@@ -9,6 +9,7 @@ export const objSizes = {
 export const gameWidth = 700;
 export const gameHeight = 700;
 export const textHeight = 15;
+export const tableTextColor = 'black'
 export const menuPaddingH = 15;
 export const menuPaddingV = 5;
 

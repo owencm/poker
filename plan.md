@@ -1,0 +1,8 @@
+- Deploy new version
+- Add rooms support
+- Buy domain
+- Add share links / content into UI
+- Share on Facebook
+- Refactor to more generic "objects" implementation instead of code for cards, chips etc
+- Understand bunko requirements, consider building them. 
+  - Dice

@@ -1,11 +1,9 @@
 /*
   Todos:
-    - Move names
-    - More than 6 players
     - Move gather and shuffle
     - Dealer chip
     - Switch from SVG to pngs for all cards and chips
-    - Sound effects
+    - Sound efcts
     - Annotate players taking actions
     - Animations
     - Move and rename players
@@ -31,14 +29,15 @@ import {
   gameHeight,
   textHeight,
   playerAlignment,
-  playerPositions
+  playerPositions,
+  tableTextColor
 } from "./constants.mjs";
 import {
   getInitialGameState,
   updateGameStateBasedOnActions,
   getNewDeckObj,
   alignTextObj,
-  addSizeInfoToTextObj
+  addSizeInfoToTextOrPlayerObj
 } from "./gameCore.mjs";
 
 // Globals
@@ -74,7 +73,7 @@ const render = gameState => {
   ctx.clearRect(0, 0, gameWidth, gameHeight);
 
   for (let player of gameState.playerObjs) {
-    ctx.fillStyle = "black";
+    ctx.fillStyle = tableTextColor;
     ctx.fillText(player.name, player.pos[0], player.pos[1]);
   }
   for (let cardsObj of gameState.cardsObjs) {
@@ -118,7 +117,7 @@ const render = gameState => {
     );
     cardDescr =
       othersWithPeekingState.length > 0 ? cardDescr + "👁️" : cardDescr;
-    ctx.fillStyle = "black";
+    ctx.fillStyle = tableTextColor;
     ctx.fillText(cardDescr, pos[0], pos[1] + objSizes["cards"][1]);
   }
   for (let chipsObj of gameState.chipsObjs) {
@@ -147,18 +146,18 @@ const render = gameState => {
     ctx.fill(chipPath);
     ctx.restore();
 
-    ctx.fillStyle = "black";
+    ctx.fillStyle = tableTextColor;
     ctx.fillText(`x${count}`, pos[0], pos[1] + objSizes["chips"][0]);
   }
 
   for (let textObj of gameState.textObjs) {
     const { pos, text } = textObj;
-    ctx.fillStyle = "black";
+    ctx.fillStyle = tableTextColor;
     ctx.fillText(text, pos[0], pos[1]);
   }
 
   for (let menuObj of gameState.menuObjs) {
-    const pos = menuObj.mouseDownPosOnRelatedObj || menuObj.pos;
+    const pos = menuObj.pos;
     const { options, width, height } = menuObj;
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.beginPath();
@@ -566,7 +565,7 @@ const addEventListeners = gameState => {
       gameState.inputState = {
         mode: "actions",
         action: {
-          actionType: "resetGame"
+          actionType: "endGame"
         }
       };
     }
@@ -632,7 +631,7 @@ const startGame = () => {
         setTimeout(() => {
           console.log("Sent action to server", action);
           socket.emit("action", action);
-        }, 0);
+        }, 2000);
       });
     }
   };
@@ -647,8 +646,8 @@ const startGame = () => {
       delete localStorage.playerId;
     }
 
-    initialGameState.playerObjs.forEach(addSizeInfoToTextObj)
-    initialGameState.textObjs.forEach(addSizeInfoToTextObj);
+    initialGameState.playerObjs.forEach(addSizeInfoToTextOrPlayerObj)
+    initialGameState.textObjs.forEach(addSizeInfoToTextOrPlayerObj);
 
     addEventListeners(initialGameState);
 
